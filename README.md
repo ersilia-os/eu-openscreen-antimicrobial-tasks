@@ -1,84 +1,45 @@
-# Ersilia's analysis template
+# EU OpenScreen Antimicrobial Screening Analysis
 
-This repository provides a structured template for setting up new research analysis in Ersilia.
+Analysis of antimicrobial phenotypic screening data from the [EU OpenScreen](https://www.eu-openscreen.eu/) ECBD database for seven ESKAPE+ pathogens: *A. baumannii*, *C. albicans*, *E. coli*, *E. faecalis*, *K. pneumoniae*, *P. aeruginosa*, and *S. aureus*.
 
-## Background
+The goal is to produce clean, binarised, per-pathogen compound activity datasets.
 
-<Replace this paragraph with a short description of the project. This description should explain the background or context of the project, specifying collaborators.>
-
-## 🚀 Getting Started
-
-<Replace this bit with any relevant information about how to use this repository>
+## Getting started
 
 ```bash
-git clone <your-repo-url>
-cd <your-repo-url>
+git clone https://github.com/ersilia-os/eu-openscreen-antimicrobial-tasks
+cd eu-openscreen-antimicrobial-tasks
+pip install -r requirements.txt
 ```
 
-### Tracking details
+Data is tracked with [eosvc](https://github.com/ersilia-os/eosvc) (linked to S3), not git. To fetch it:
 
-The project is is tracked in [GitHub](https://github.com/ersilia-os/) (code) and [EOSVC](https://github.com/ersilia-os/eosvc) (data):
-
-* Tracked by Git and linked to a Github repository: only src, scripts and notebooks.
-* Tracked by eosvc and linked to a public or private S3 bucket. Only the data/ and output/ folder are eosvc tracked.
-
-## Repository structure
-
-This repository is organized as follows:
-
-```
-eos-analysis-template/
-│
-├── LICENSE
-├── README.md
-├── .gitignore
-├── requirements.txt
-├── data/
-│   ├── raw/
-│   └── processed/
-├── scripts/
-├── notebooks/
-├── assets/
-├── output/
-├── src/
-├── tools/
-├── docs/
-├── tmp/
-└── .git/
+```bash
+eosvc download --path data/
+eosvc download --path output/
 ```
 
-- **data/**
-  - **raw/** → Original, untouched datasets  
-  - **processed/** → Cleaned and transformed datasets  
+## Running the analysis
 
-- **scripts/** → Standalone scripts for preprocessing or automation. Numbered in sequential order for running 
+Run scripts in order from the `scripts/` directory. See `scripts/README.md` for details on each step.
 
-- **notebooks/** → Jupyter notebooks for exploration and prototyping  
+```bash
+python scripts/00_extract_assays.py
+python scripts/01_fetch_new_assays.py
+python scripts/02_binarise_and_merge.py
+```
 
-- **assets/** → Images, figures, and other static resources  
+## Key outputs
 
-- **output/** → Results of the scripts, numbered by file or folder according to the scripts numbering  
+| File | Description |
+|---|---|
+| `output/00_assay_summary.csv` | Assay metadata extracted from the SQL dump |
+| `output/01_assay_summary.csv` | Assay metadata fetched from the ECBD API |
+| `data/processed/02_<pathogen>.csv` | Binarised, deduplicated activity data per pathogen |
+| `data/processed/02_all_smiles.csv` | All unique SMILES across pathogens |
 
-- **src/** → Core source code and reusable modules  
+## About Ersilia
 
-- **tools/** → Helper utilities and development tools  
-
-- **docs/** → Project documentation and reports, including AI-generated docs and files
-
-- **tmp/** → Temporary files or intermediate outputs  
-
-- **.git/** → Git metadata (version control)  
-
-- **requirements.txt** → version-specified list of packages required to run the analysis
-
----
-
-📌 Empty folders are preserved with `.gitkeep` files so the structure remains consistent in Git.
-
----
-
-## About the Ersilia Open Source Initiative
-
-The [Ersilia Open Source Initiative](https://ersilia.io) is a tech-nonprofit organization fueling sustainable research in the Global South. Ersilia's main asset is the [Ersilia Model Hub](https://github.com/ersilia-os/ersilia), an open-source repository of AI/ML models for antimicrobial drug discovery.
+The [Ersilia Open Source Initiative](https://ersilia.io) is a tech-nonprofit building open-source AI/ML tools for antimicrobial drug discovery in the Global South. Its main asset is the [Ersilia Model Hub](https://github.com/ersilia-os/ersilia).
 
 ![Ersilia Logo](assets/Ersilia_Brand.png)
