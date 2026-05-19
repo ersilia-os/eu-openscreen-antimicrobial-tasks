@@ -22,12 +22,16 @@ Activity mapping:
   undefined    → -1  (treated as inconclusive: result not determined)
 
 Rows with no SMILES are dropped before any output is written.
+SMILES that cannot be parsed by RDKit are also dropped; the canonical RDKit
+SMILES replaces the original string in all outputs.
 """
 
 import csv
 import os
 from collections import defaultdict
 from pathlib import Path
+
+from rdkit import Chem
 
 root = Path(__file__).resolve().parent  # scripts/
 
@@ -64,24 +68,36 @@ def load_assay_pathogen_map(summary_path: Path) -> dict[str, dict]:
     return mapping
 
 
-def read_assay(csv_path: Path) -> list[dict]:
-    """Read a raw assay CSV; return rows that have a non-empty SMILES."""
+def read_assay(csv_path: Path) -> tuple[list[dict], int]:
+    """
+    Read a raw assay CSV; canonicalise SMILES via RDKit.
+    Returns (rows, n_dropped) where n_dropped counts rows eliminated because
+    SMILES was empty, unparseable by RDKit, or had an unmapped activity label.
+    """
     rows = []
+    n_dropped = 0
     with open(csv_path, newline="") as f:
         for row in csv.DictReader(f):
             smiles = (row.get("smiles") or "").strip()
             if not smiles:
+                n_dropped += 1
                 continue
             activity = (row.get("activity") or "").strip().lower()
             bin_val = ACTIVITY_MAP.get(activity)
             if bin_val is None:
+                n_dropped += 1
                 continue
+            mol = Chem.MolFromSmiles(smiles)
+            if mol is None:
+                n_dropped += 1
+                continue
+            canonical = Chem.MolToSmiles(mol)
             rows.append({
-                "smiles": smiles,
+                "smiles": canonical,
                 "inchikey": (row.get("inchikey") or "").strip(),
                 "bin": bin_val,
             })
-    return rows
+    return rows, n_dropped
 
 
 def write_binarised(rows: list[dict], out_path: Path) -> int:
@@ -131,7 +147,7 @@ def process_source(
             print(f"  WARNING: {assay_id} not in summary, skipping.")
             continue
 
-        rows = read_assay(csv_path)
+        rows, n_dropped = read_assay(csv_path)
         if not rows:
             print(f"  {assay_id}: no usable rows (empty or all rows lack SMILES).")
             out_path = binarised_dir / f"{assay_id}.csv"
@@ -140,7 +156,8 @@ def process_source(
 
         out_path = binarised_dir / f"{assay_id}.csv"
         n = write_binarised(rows, out_path)
-        print(f"  {assay_id}: {n} rows → {out_path.name}")
+        dropped_msg = f", {n_dropped} dropped" if n_dropped else ""
+        print(f"  {assay_id}: {n} rows{dropped_msg} → {out_path.name}")
 
         all_rows.extend(rows)
         pcode = info["pathogen_code"]
@@ -192,6 +209,14 @@ def main():
     all_pathogen_codes = set(pathogen_rows_00) | set(pathogen_rows_01)
     print(f"\nMerging {len(all_pathogen_codes)} pathogens ...")
 
+    # Build a pathogen_code -> pathogen_name lookup from both summary maps
+    pathogen_name: dict[str, str] = {}
+    for m in (assay_map_00, assay_map_01):
+        for info in m.values():
+            pathogen_name[info["pathogen_code"]] = info["pathogen"]
+
+    summary_rows = []
+
     for pcode in sorted(all_pathogen_codes):
         combined = pathogen_rows_00.get(pcode, []) + pathogen_rows_01.get(pcode, [])
         merged = merge_pathogen_rows(combined)
@@ -202,14 +227,34 @@ def main():
             writer.writeheader()
             writer.writerows(merged)
 
+        n_total = len(merged)
         n_active = sum(1 for r in merged if r["bin"] == 1)
         n_inactive = sum(1 for r in merged if r["bin"] == 0)
         n_inconclusive = sum(1 for r in merged if r["bin"] == -1)
+        ratio = round(n_active / n_total, 4) if n_total else 0.0
         print(
-            f"  {pcode}: {len(merged)} unique SMILES — "
+            f"  {pcode}: {n_total} unique SMILES — "
             f"{n_active} active, {n_inactive} inactive, {n_inconclusive} inconclusive"
             f" → {out_path.name}"
         )
+        summary_rows.append({
+            "pathogen_code": pcode,
+            "pathogen": pathogen_name.get(pcode, ""),
+            "n_molecules": n_total,
+            "n_active": n_active,
+            "active_ratio": ratio,
+        })
+
+    # --- Pathogen summary ---
+    os.makedirs(output_dir, exist_ok=True)
+    summary_path = output_dir / "02_pathogens_summary.csv"
+    with open(summary_path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=["pathogen_code", "pathogen", "n_molecules", "n_active", "active_ratio"]
+        )
+        writer.writeheader()
+        writer.writerows(summary_rows)
+    print(f"\nPathogen summary → {summary_path.name}")
 
 
 if __name__ == "__main__":
