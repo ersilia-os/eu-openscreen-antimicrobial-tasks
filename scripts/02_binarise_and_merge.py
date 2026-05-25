@@ -9,7 +9,7 @@ and produces:
     00_<assay_id>.csv   — (smiles, bin) for each assay from the SQL dump
     01_<assay_id>.csv   — (smiles, bin) for each assay from the API fetch
 
-  data/processed/
+  data/processed/02_merged/
     02_all_smiles.csv   — deduplicated (smiles, inchikey) across all assays
     02_only_smiles.csv  — deduplicated smiles column only
     02_<pathogen>.csv   — merged (smiles, inchikey, bin) per pathogen,
@@ -39,12 +39,15 @@ raw_dir = root / ".." / "data" / "raw"
 processed_dir = root / ".." / "data" / "processed"
 output_dir = root / ".." / "output"
 binarised_dir = processed_dir / "02_binarised_assays"
+merged_dir = processed_dir / "02_merged"
+script_output_dir = output_dir / "02_binarise_and_merge"
 
 os.makedirs(binarised_dir, exist_ok=True)
-os.makedirs(processed_dir, exist_ok=True)
+os.makedirs(merged_dir, exist_ok=True)
+os.makedirs(script_output_dir, exist_ok=True)
 
-SUMMARY_00 = output_dir / "00_assay_summary.csv"
-SUMMARY_01 = output_dir / "01_assay_summary.csv"
+SUMMARY_00 = output_dir / "00_extract_assays" / "00_assay_summary.csv"
+SUMMARY_01 = output_dir / "01_fetch_new_assays" / "01_assay_summary.csv"
 
 ACTIVITY_MAP = {
     "active": 1,
@@ -186,14 +189,14 @@ def main():
         if smiles not in seen_smiles:
             seen_smiles[smiles] = row["inchikey"]
 
-    all_smiles_path = processed_dir / "02_all_smiles.csv"
+    all_smiles_path = merged_dir / "02_all_smiles.csv"
     with open(all_smiles_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["smiles", "inchikey"])
         writer.writeheader()
         for smiles, inchikey in sorted(seen_smiles.items()):
             writer.writerow({"smiles": smiles, "inchikey": inchikey})
 
-    only_smiles_path = processed_dir / "02_only_smiles.csv"
+    only_smiles_path = merged_dir / "02_only_smiles.csv"
     with open(only_smiles_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["smiles"])
         writer.writeheader()
@@ -221,7 +224,7 @@ def main():
         combined = pathogen_rows_00.get(pcode, []) + pathogen_rows_01.get(pcode, [])
         merged = merge_pathogen_rows(combined)
 
-        out_path = processed_dir / f"02_{pcode}.csv"
+        out_path = merged_dir / f"02_{pcode}.csv"
         with open(out_path, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=["smiles", "inchikey", "bin"])
             writer.writeheader()
@@ -246,8 +249,7 @@ def main():
         })
 
     # --- Pathogen summary ---
-    os.makedirs(output_dir, exist_ok=True)
-    summary_path = output_dir / "02_pathogens_summary.csv"
+    summary_path = script_output_dir / "02_pathogens_summary.csv"
     with open(summary_path, "w", newline="") as f:
         writer = csv.DictWriter(
             f, fieldnames=["pathogen_code", "pathogen", "n_molecules", "n_active", "active_ratio"]

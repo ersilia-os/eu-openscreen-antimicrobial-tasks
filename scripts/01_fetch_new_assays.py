@@ -12,8 +12,8 @@ Per-compound data is retrieved via the frontend ajax_data endpoint:
 For embargoed assays (no data rendered on page), a header-only CSV is written.
 
 Outputs:
-  output/01_assay_summary.csv     — metadata for newly found assays
-  data/raw/01_extracted_assays/   — one CSV per new assay (with data if available)
+  output/01_fetch_new_assays/01_assay_summary.csv  — metadata for newly found assays
+  data/raw/01_extracted_assays/                    — one CSV per new assay (with data if available)
 """
 
 import csv
@@ -31,10 +31,11 @@ root = Path(__file__).resolve().parent  # scripts/
 
 raw_dir = root / ".." / "data" / "raw"
 output_dir = root / ".." / "output"
-os.makedirs(output_dir, exist_ok=True)
+script_output_dir = output_dir / "01_fetch_new_assays"
+os.makedirs(script_output_dir, exist_ok=True)
 
-SUMMARY_00 = output_dir / "00_assay_summary.csv"
-OUTPUT_CSV = output_dir / "01_assay_summary.csv"
+SUMMARY_00 = output_dir / "00_extract_assays" / "00_assay_summary.csv"
+OUTPUT_CSV = script_output_dir / "01_assay_summary.csv"
 ASSAYS_DIR = raw_dir / "01_extracted_assays"
 os.makedirs(ASSAYS_DIR, exist_ok=True)
 

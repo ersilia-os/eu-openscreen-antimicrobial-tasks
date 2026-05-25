@@ -33,10 +33,11 @@ python scripts/02_binarise_and_merge.py
 
 | File | Description |
 |---|---|
-| `output/00_assay_summary.csv` | Assay metadata extracted from the SQL dump |
-| `output/01_assay_summary.csv` | Assay metadata fetched from the ECBD API |
-| `data/processed/02_<pathogen>.csv` | Binarised, deduplicated activity data per pathogen |
-| `data/processed/02_all_smiles.csv` | All unique SMILES across pathogens |
+| `output/00_extract_assays/00_assay_summary.csv` | Assay metadata extracted from the SQL dump |
+| `output/01_fetch_new_assays/01_assay_summary.csv` | Assay metadata fetched from the ECBD API |
+| `output/02_binarise_and_merge/02_pathogens_summary.csv` | Per-pathogen molecule and active counts |
+| `data/processed/02_merged/02_<pathogen>.csv` | Binarised, deduplicated activity data per pathogen |
+| `data/processed/02_merged/02_all_smiles.csv` | All unique SMILES across pathogens |
 
 ## About Ersilia
 

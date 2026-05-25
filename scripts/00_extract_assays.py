@@ -16,12 +16,14 @@ from pathlib import Path
 root = Path(__file__).resolve().parent  # scripts/
 
 raw_dir = root / ".." / "data" / "raw"
+config_dir = root / ".." / "data" / "config"
 output_dir = root / ".." / "output"
-os.makedirs(output_dir, exist_ok=True)
+script_output_dir = output_dir / "00_extract_assays"
+os.makedirs(script_output_dir, exist_ok=True)
 
-DUMP_ZIP = raw_dir / "ecbd_dump_public.zip"
-PATHOGENS_CSV = raw_dir / "pathogens.csv"
-OUTPUT_CSV = output_dir / "00_assay_summary.csv"
+DUMP_ZIP = config_dir / "ecbd_dump_public.zip"
+PATHOGENS_CSV = config_dir / "pathogens.csv"
+OUTPUT_CSV = script_output_dir / "00_assay_summary.csv"
 ASSAYS_DIR = raw_dir / "00_extracted_assays"
 
 # IRI-based matching for organisms present in the EU OpenScreen database.
@@ -308,7 +310,7 @@ def main():
         record["ncbi_tax_id"] = m.group(1) if m else ""
         record["intended_target_eos_ids"] = "; ".join(sorted(organism_targets[key]))
 
-    organisms_path = output_dir / "00_all_organisms.csv"
+    organisms_path = script_output_dir / "00_all_organisms.csv"
     with open(organisms_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["label", "ncbi_tax_id", "intended_target_eos_ids", "iri", "ontology"])
         writer.writeheader()
