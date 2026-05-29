@@ -1,3 +1,7 @@
+This project has been financed by Project PID2023-148309OA-I00 funded by MICIU/AEI/10.13039/501100011033 and by ERDF, EU.
+
+<img src="https://raw.githubusercontent.com/ersilia-os/ersilia/master/assets/miciu_cofinanciado.jpg" width="300">
+
 # EU OpenScreen Antimicrobial Screening Analysis
 
 Analysis of antimicrobial phenotypic screening data from the [EU OpenScreen](https://www.eu-openscreen.eu/) ECBD database for seven ESKAPE+ pathogens: *A. baumannii*, *C. albicans*, *E. coli*, *E. faecalis*, *K. pneumoniae*, *P. aeruginosa*, and *S. aureus*.
