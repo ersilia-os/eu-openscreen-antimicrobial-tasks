@@ -7,6 +7,10 @@ tmp/
 .DS_Store
 .vscode/
 
+# In-repo conda environment for the HPC cluster (see scripts/07b_train_models.sh).
+# Compute nodes only see the shared filesystem, so the env must live beside the code.
+envs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
