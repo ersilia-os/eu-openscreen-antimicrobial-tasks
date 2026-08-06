@@ -30,19 +30,21 @@ PATHOGEN_CODES = [
     "abaumannii",
     "calbicans",
     "ecoli",
-    "efaecium",
+    "efaecalis",
     "kpneumoniae",
     "paeruginosa",
     "saureus",
 ]
 
-# NOTE: the "efaecium" datasets are actually E. faecalis (NCBITaxon_1351), the closest
-# organism available in ECBD. See 00_extract_assays.py and scripts/README.md.
+# "efaecalis" was originally coded as "efaecium": E. faecium was the intended target, but ECBD
+# holds no data for it, so every assay behind this code is E. faecalis ATCC 29212
+# (NCBITaxon_1351). Code and label were renamed to name the organism actually screened.
+# See 00_extract_assays.py and scripts/README.md.
 PATHOGEN_LABELS = {
     "abaumannii": "A. baumannii",
     "calbicans": "C. albicans",
     "ecoli": "E. coli",
-    "efaecium": "E. faecium",
+    "efaecalis": "E. faecalis",
     "kpneumoniae": "K. pneumoniae",
     "paeruginosa": "P. aeruginosa",
     "saureus": "S. aureus",
@@ -53,3 +55,20 @@ TASKS = ["primary", "secondary"]
 # Tasks at or above this compound count are submitted as a separate SLURM array with more
 # memory. Splits the 14 tasks into the ~5K secondary sets and the ~101K primary screens.
 LARGE_TASK_COMPOUNDS = 30000
+
+# --- Plotting (08_model_reports) ---
+# stylia NamedColors names, one per pathogen. Kept consistent with scripts 03, 05 and 06,
+# which each define the same mapping locally.
+PATHOGEN_COLORS = {
+    "abaumannii": "crimson",
+    "calbicans": "turquoise",
+    "ecoli": "cobalt",
+    "efaecalis": "tangerine",
+    "kpneumoniae": "amber",
+    "paeruginosa": "orchid",
+    "saureus": "periwinkle",
+}
+# Maximum points drawn per group in the rank-score scatter. Display only: the primary screens
+# pool ~500K inactive points across folds, which is unreadable and slow to render. Boxplot
+# statistics are always computed on every point.
+SCATTER_MAX_POINTS = 5000

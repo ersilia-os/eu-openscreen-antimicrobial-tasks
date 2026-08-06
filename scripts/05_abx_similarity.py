@@ -87,7 +87,7 @@ EOS2XEQ_COL = "is_sim_known_ab"
 MIN_ACTIVES = 5
 
 PATHOGEN_CODES = [
-    "abaumannii", "calbicans", "ecoli", "efaecium",
+    "abaumannii", "calbicans", "ecoli", "efaecalis",
     "kpneumoniae", "paeruginosa", "saureus",
 ]
 
@@ -95,7 +95,7 @@ PATHOGEN_LABELS = {
     "abaumannii": "A. baumannii",
     "calbicans": "C. albicans",
     "ecoli": "E. coli",
-    "efaecium": "E. faecium",
+    "efaecalis": "E. faecalis",
     "kpneumoniae": "K. pneumoniae",
     "paeruginosa": "P. aeruginosa",
     "saureus": "S. aureus",
@@ -105,7 +105,7 @@ _PATHOGEN_COLOR_NAMES = {
     "abaumannii": "crimson",
     "calbicans": "turquoise",
     "ecoli": "cobalt",
-    "efaecium": "tangerine",
+    "efaecalis": "tangerine",
     "kpneumoniae": "amber",
     "paeruginosa": "orchid",
     "saureus": "periwinkle",

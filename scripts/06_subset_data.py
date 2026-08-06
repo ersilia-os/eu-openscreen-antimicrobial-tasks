@@ -57,7 +57,7 @@ PATHOGEN_LABELS = {
     "abaumannii": "A. baumannii",
     "calbicans": "C. albicans",
     "ecoli": "E. coli",
-    "efaecium": "E. faecium",
+    "efaecalis": "E. faecalis",
     "kpneumoniae": "K. pneumoniae",
     "paeruginosa": "P. aeruginosa",
     "saureus": "S. aureus",

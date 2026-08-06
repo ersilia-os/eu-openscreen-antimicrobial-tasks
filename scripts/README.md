@@ -58,7 +58,9 @@ The required input files are:
 
 Parses the EU OpenScreen PostgreSQL dump (`data/config/ecbd_dump_public.zip`) without loading it fully into memory. Matches assays to each target pathogen — first by NCBI Taxonomy IRI via `core_assayparameter`, with keyword fallback on assay name, description, and target fields — and writes a summary CSV to `output/00_extract_assays/` and one per-compound CSV per assay to `data/raw/00_extracted_assays/`.
 
-**Pathogen mapping:** E. coli includes both the species-level IRI (NCBITaxon_562) and the ATCC 25922 strain (NCBITaxon_1322345). P. aeruginosa is matched via the "group" entry (NCBITaxon_136841). The *E. faecium* entry is matched to *E. faecalis* (NCBITaxon_1351), the closest organism available in the database.
+**Pathogen mapping:** E. coli includes both the species-level IRI (NCBITaxon_562) and the ATCC 25922 strain (NCBITaxon_1322345). P. aeruginosa is matched via the "group" entry (NCBITaxon_136841).
+
+**`efaecalis` was formerly `efaecium`.** *E. faecium* was the intended target, but ECBD holds no data for it, so this entry has always been matched to *E. faecalis* (NCBITaxon_1351) and all six of its assays are "E. faecalis ATCC 29212 Anti-Bacterial Assay". The pathogen code, the display label and the config CSVs were therefore renamed to name the organism actually screened. The rename was applied to existing outputs in place — `data/processed/02_merged/02_efaecalis.csv`, the `06_subset_data/` subsets and the `07_train_models/{datasets,reports,models}/efaecalis/` directories — rather than by re-running `00_extract_assays.py`, since the underlying assay data is unchanged. Note that `pathogens.csv` now reads `Enterococcus faecalis`, which also makes the keyword fallback in `00_extract_assays.py` match the real assay names; the IRI match was already doing the work.
 
 ## 01_fetch_new_assays.py
 
@@ -163,4 +165,19 @@ The per-descriptor `oof_auc_*` columns were identical across all runs, confirmin
 
 **Model choice:** `LAZYQSAR_MODE = "slow"` — the full descriptor portfolio (cddd, chemeleon, clamp, morgan, rdkit) rather than `"fast"` (Morgan only), matching the reference repository. Constants live in `src/default.py`.
 
-**Cost and memory.** `mode="slow"` computes five descriptor sets, three of them deep-learning encoders, and descriptor computation dominates training time — measured here, one 5.3K-compound secondary task took over an hour of CPU. Each task needs 6 fits (5 folds + 1 final) and each recomputes its descriptors from SMILES, so the ~101K-compound primary tasks are far more expensive again. `07a` therefore prints two `sbatch` commands, splitting at `LARGE_TASK_COMPOUNDS = 30000`: the 7 secondary tasks at `--mem=16G` and the 7 primary tasks at `--mem=64G`. Raise `--mem` if jobs are OOM-killed — a 101K × 2048 float32 descriptor matrix alone is ~830 MB, and several are held at once.
+**Cost and memory (07b).** `mode="slow"` computes five descriptor sets, three of them deep-learning encoders, and descriptor computation dominates training time — measured here, one 5.3K-compound secondary task took over an hour of CPU. Each task needs 6 fits (5 folds + 1 final) and each recomputes its descriptors from SMILES, so the ~101K-compound primary tasks are far more expensive again. `07a` therefore prints two `sbatch` commands, splitting at `LARGE_TASK_COMPOUNDS = 30000`: the 7 secondary tasks at `--mem=16G` and the 7 primary tasks at `--mem=64G`. Raise `--mem` if jobs are OOM-killed — a 101K × 2048 float32 descriptor matrix alone is ~830 MB, and several are held at once.
+## 08_model_reports.py
+
+Aggregates the 14 cross-validation reports from step 07b and renders the evaluation figures. Mirrors the reporting step of [chembl-antimicrobial-models](https://github.com/ersilia-os/chembl-antimicrobial-models) (scripts 10a/10b), but reports **metrics only** — no model is filtered out and no composite quality score is computed, so no retention threshold is encoded here. All plotting uses `stylia`.
+
+**`08_model_reports.csv`** — one row per task: mean and standard deviation across folds for AUROC, AUPRC and BEDROC with their random baselines, the pooled out-of-fold AUROC, the model's `decision_cutoff_rank`, the descriptors LazyQSAR's portfolio kept, and each descriptor's mean out-of-fold AUC.
+
+**`08_report_{pathogen}.png`** (one per pathogen) — panel **A**: out-of-fold ROC curves for the primary and secondary tasks, bold curve pooling all folds with the five individual folds faint behind it; panel **B**: out-of-fold rank-score distributions for actives vs inactives, boxplot plus jittered scatter, with `decision_cutoff_rank` as a dotted line.
+
+**`08_roc_primary_secondary.png`** — two panels, primary and secondary, each overlaying all seven pathogens' pooled out-of-fold ROC curves in the per-pathogen colours used elsewhere in the repo.
+
+**Pooled vs mean AUROC.** The bold ROC curve concatenates every fold's predictions, so its AUC (`auroc_pooled`) is not identical to the mean of the per-fold AUROCs (`auroc_mean`). They agree closely here — the largest gap across the 14 tasks is 0.006 — but `auroc_mean ± auroc_std` is the headline number, because that is what the reference repository reports.
+
+**Scatter subsampling.** Panel B caps the plotted points at `SCATTER_MAX_POINTS = 5000` per group with a `RANDOM_SEED`-fixed draw; the primary screens pool ~500K inactive out-of-fold points across folds, which is unreadable and slow to render. **Boxplot statistics always use every point.** Because the cap applies to both tasks, the two point clouds render at similar density regardless of size, so the axis labels carry the true active/inactive counts and the legend states the cap.
+
+**Read AUROC against the baselines, not on its own.** At 0.014–0.4% prevalence AUROC flatters these models: *P. aeruginosa* primary reaches 0.985 against an AUPRC baseline of 0.0001. The AUPRC and BEDROC columns and their baselines are in the CSV for exactly this reason.

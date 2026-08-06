@@ -30,13 +30,13 @@ ASSAYS_DIR = raw_dir / "00_extracted_assays"
 # For pathogens not listed here, keyword matching on assay name/description/target is used as fallback.
 # E. coli: both the species-level (562) and the ATCC 25922 strain (1322345) are included.
 # P. aeruginosa: annotated as "group" in the DB (136841) but treated as P. aeruginosa.
-# E. faecalis (1351) is used for the "efaecium" entry — it is the closest match available in the DB.
+# E. faecalis (1351) is used for the "efaecalis" entry — it is the closest match available in the DB.
 PATHOGEN_IRIS: dict[str, list[str]] = {
     "abaumannii":  ["http://purl.obolibrary.org/obo/NCBITaxon_470"],
     "calbicans":   ["http://purl.obolibrary.org/obo/NCBITaxon_5476"],
     "ecoli":       ["http://purl.obolibrary.org/obo/NCBITaxon_562",
                     "http://purl.obolibrary.org/obo/NCBITaxon_1322345"],
-    "efaecium":    ["http://purl.obolibrary.org/obo/NCBITaxon_1351"],
+    "efaecalis":    ["http://purl.obolibrary.org/obo/NCBITaxon_1351"],
     "kpneumoniae": ["http://purl.obolibrary.org/obo/NCBITaxon_573"],
     "paeruginosa": ["http://purl.obolibrary.org/obo/NCBITaxon_136841"],
     "saureus":     ["http://purl.obolibrary.org/obo/NCBITaxon_1280"],
