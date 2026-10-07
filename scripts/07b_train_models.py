@@ -44,7 +44,9 @@ import sys  # noqa: E402
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from lazyqsar.qsar import LazyClassifierQSAR  # noqa: E402
+from lazyqsar.ensemble.runner import get_chunk_size, persist_descriptors  # noqa: E402
+from lazyqsar.qsar import LazyClassifierQSAR, validate_smiles  # noqa: E402
+from lazyqsar.registry import DESCRIPTORS_MODE, get_descriptor_type  # noqa: E402
 from lazyqsar.utils.metrics import bedroc_random_baseline, bedroc_score  # noqa: E402
 from sklearn.metrics import average_precision_score, roc_auc_score  # noqa: E402
 from sklearn.model_selection import StratifiedKFold  # noqa: E402
@@ -80,11 +82,44 @@ def load_metadata() -> pd.DataFrame:
     return pd.read_csv(METADATA_CSV)
 
 
+def stage_descriptors(smiles: list, scratch: str) -> dict:
+    """Featurize every compound once into an .npy per descriptor; return their paths.
+
+    LazyClassifierQSAR.fit() otherwise featurizes from scratch on every call and holds
+    each candidate descriptor of the portfolio in memory at once. For a task whose
+    minority class forces many batches — paeruginosa/primary is 14 actives in 101,022
+    compounds, so 73 batches per descriptor — six such fits exceeded the 96 GB of the
+    machine and the OS killed the process twice. Staging to disk and handing fit() the
+    slice it needs keeps one copy on disk and a memmapped view per fold instead.
+
+    Reuses an existing .npy, so a requeued task does not refeaturize.
+    """
+    os.makedirs(scratch, exist_ok=True)
+    chunk_size = get_chunk_size()
+    paths = {}
+    for name in DESCRIPTORS_MODE[LAZYQSAR_MODE]:
+        path = os.path.join(scratch, f"{name}.npy")
+        if not os.path.exists(path):
+            print(f"  staging descriptor: {name}", flush=True)
+            descriptor = get_descriptor_type(name)()
+            persist_descriptors(descriptor, smiles, path, chunk_size)
+            del descriptor
+        paths[name] = path
+    return paths
+
+
+def precomputed_for(staged: dict, rows: list) -> dict:
+    """The staged descriptor rows for one fold, read through a memmap."""
+    return {
+        name: np.load(path, mmap_mode="r")[rows] for name, path in staged.items()
+    }
+
+
 def num_batches(model) -> float:
     """
     Number of internal sub-models LazyQSAR fitted for the first descriptor, or NaN.
 
-    LazyQSAR 3.4.2 exposes this only as a per-descriptor dict written into the saved
+    LazyQSAR (3.4.2 to 3.6.0) exposes this only as a per-descriptor dict written into the saved
     model's metadata.json, with no public attribute on the fitted object, so this reads
     the same private chain chembl-antimicrobial-models uses. Guarded because that chain
     is fragile across LazyQSAR versions, and a missing value must not abort a fold.
@@ -95,7 +130,7 @@ def num_batches(model) -> float:
         return np.nan
 
 
-def run_cv(smiles: list, y: list, pathogen: str, task: str) -> None:
+def run_cv(smiles: list, y: list, pathogen: str, task: str, staged: dict = None) -> None:
     """N_FOLDS-fold stratified CV. Writes the per-fold report CSV and the raw fold arrays."""
     records = []
     fold_data = {}
@@ -108,7 +143,11 @@ def run_cv(smiles: list, y: list, pathogen: str, task: str) -> None:
         y_test = [y[i] for i in test_idx]
 
         model = LazyClassifierQSAR(mode=LAZYQSAR_MODE)
-        model.fit(smiles_list=smiles_train, y=y_train)
+        if staged is None:
+            model.fit(smiles_list=smiles_train, y=y_train)
+        else:
+            model.fit(smiles_train, y_train,
+                      precomputed=precomputed_for(staged, list(train_idx)), validate=False)
         scores_proba = model.predict_proba(smiles_list=smiles_test)[:, 1]
         scores_rank = model.predict_rank(smiles_list=smiles_test)[:, 1]
 
@@ -172,7 +211,7 @@ def run_cv(smiles: list, y: list, pathogen: str, task: str) -> None:
     print(f"  Folds saved:  {os.path.relpath(folds_path, repo_root)}")
 
 
-def run(task_id: int) -> None:
+def run(task_id: int, disk_backed: bool = False) -> None:
     metadata = load_metadata()
     if not 0 <= task_id < len(metadata):
         raise IndexError(
@@ -207,17 +246,29 @@ def run(task_id: int) -> None:
     smiles = dataset[COL_SMILES].tolist()
     y = dataset[COL_BIN].astype(int).tolist()
 
+    staged = None
+    if disk_backed:
+        scratch = os.environ.get("LAZYQSAR_FIT_SCRATCH") or os.path.join(
+            output_dir, "scratch", pathogen, task)
+        print(f"  disk-backed fit, scratch: {scratch}", flush=True)
+        validate_smiles(smiles)
+        staged = stage_descriptors(smiles, scratch)
+
     if report_done:
         print("  Report exists — skipping CV")
     else:
-        run_cv(smiles, y, pathogen, task)
+        run_cv(smiles, y, pathogen, task, staged=staged)
 
     if model_done:
         print("  Final model exists — skipping")
     else:
         print("  Training final model on all data", flush=True)
         model = LazyClassifierQSAR(mode=LAZYQSAR_MODE)
-        model.fit(smiles_list=smiles, y=y)
+        if staged is None:
+            model.fit(smiles_list=smiles, y=y)
+        else:
+            model.fit(smiles, y, precomputed=precomputed_for(staged, list(range(len(smiles)))),
+                      validate=False)
         os.makedirs(model_path, exist_ok=True)
         model.save(model_path)
         print(f"  Model saved:  {os.path.relpath(model_path, repo_root)}")
@@ -246,6 +297,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--list", action="store_true", help="List every task with its task_id and exit"
     )
+    parser.add_argument(
+        "--disk-backed", action="store_true",
+        help="Featurize once to .npy and memmap each fold's slice, instead of letting "
+             "fit() featurize in memory every call. Much lower peak RAM; needed for "
+             "tasks whose imbalance forces many batches.",
+    )
     args = parser.parse_args()
 
     if args.list:
@@ -253,4 +310,4 @@ if __name__ == "__main__":
     elif args.task_id is None:
         parser.error("a task_id is required (or use --list)")
     else:
-        run(args.task_id)
+        run(args.task_id, disk_backed=args.disk_backed)

@@ -1,16 +1,19 @@
-requests==2.32.4
+requests==2.32.5
 urllib3==2.5.0
 rdkit==2025.09.1
-# numpy and scikit-learn are pinned to the versions lazyqsar[all]==3.4.2 requires
-# (it hard-pins numpy==2.1.3 and scikit-learn==1.6.1); previously 2.4.6 / 1.8.0.
+# numpy and scikit-learn are pinned to the versions lazyqsar[all]==3.6.1 requires
+# (it hard-pins numpy==2.1.3 and scikit-learn==1.9.1).
 numpy==2.1.3
 pandas==2.3.0
-scikit-learn==1.6.1
+scikit-learn==1.9.1
 stylia==1.0.1
 upsetplot==0.9.0
 
-# Model training (07b_train_models.py). Same pin as chembl-antimicrobial-models.
+# Model training (07b_train_models.py). 3.6.0 reports rank against a fixed reference
+# library; fetch it once with `lazyqsar setup --descriptors --reference`.
 # Conflicts with ersilia's numpy requirement — install in a separate environment
 # from the one used for 04_ersilia_models.sh.
-# XGBoost needs the OpenMP runtime; on macOS install it with: brew install libomp
-lazyqsar[all]==3.4.2
+# XGBoost needs the OpenMP runtime; on macOS install it with: brew install libomp.
+# On macOS run with OMP_NUM_THREADS=1: with more threads torch's and xgboost's libomp
+# copies deadlock or segfault during the chemeleon descriptor.
+lazyqsar[all]==3.6.1
