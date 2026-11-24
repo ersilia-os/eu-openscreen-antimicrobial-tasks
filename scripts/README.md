@@ -176,8 +176,8 @@ Aggregates the 14 cross-validation reports from step 07b and renders the evaluat
 
 **`08_roc_primary_secondary.png`** — two panels, primary and secondary, each overlaying all seven pathogens' pooled out-of-fold ROC curves in the per-pathogen colours used elsewhere in the repo.
 
-**Pooled vs mean AUROC.** The bold ROC curve concatenates every fold's predictions, so its AUC (`auroc_pooled`) is not identical to the mean of the per-fold AUROCs (`auroc_mean`). They agree closely here — the largest gap across the 14 tasks is 0.006 — but `auroc_mean ± auroc_std` is the headline number, because that is what the reference repository reports.
+**Pooled vs mean AUROC.** The bold ROC curve concatenates every fold's predictions, so its AUC (`auroc_pooled`) is not identical to the mean of the per-fold AUROCs (`auroc_mean`). They agree closely here — the largest gap across the 14 tasks is 0.003 — but `auroc_mean ± auroc_std` is the headline number, because that is what the reference repository reports.
 
 **Scatter subsampling.** Panel B caps the plotted points at `SCATTER_MAX_POINTS = 5000` per group with a `RANDOM_SEED`-fixed draw; the primary screens pool ~500K inactive out-of-fold points across folds, which is unreadable and slow to render. **Boxplot statistics always use every point.** Because the cap applies to both tasks, the two point clouds render at similar density regardless of size, so the axis labels carry the true active/inactive counts and the legend states the cap.
 
-**Read AUROC against the baselines, not on its own.** At 0.014–0.4% prevalence AUROC flatters these models: *P. aeruginosa* primary reaches 0.985 against an AUPRC baseline of 0.0001. The AUPRC and BEDROC columns and their baselines are in the CSV for exactly this reason.
+**Read AUROC against the baselines, not on its own.** At 0.014–0.4% prevalence AUROC flatters these models: *P. aeruginosa* primary reaches 0.982 against an AUPRC baseline of 0.0001. The AUPRC and BEDROC columns and their baselines are in the CSV for exactly this reason.
